@@ -1,6 +1,7 @@
 -module (mc_connection).
 
 -export([loop/2]).
+-export([respond/4]).
 
 -include("mc_constants.hrl").
 
@@ -32,6 +33,19 @@ read_data(Socket, N, ForWhat) ->
     {ok, Data} = gen_tcp:recv(Socket, N),
     Data.
 
+process_message(Socket, StorageServer, {ok, <<?REQ_MAGIC:8, ?STAT:8, KeyLen:16,
+                                            ExtraLen:8, 0:8, 0:16,
+                                            BodyLen:32,
+                                            Opaque:32,
+                                            CAS:64>>}) ->
+    error_logger:info_msg("Got a stat request for ~p.~n", [StorageServer]),
+
+    Extra = read_data(Socket, ExtraLen, extra),
+    Key = read_data(Socket, KeyLen, key),
+    Body = read_data(Socket, BodyLen - (KeyLen + ExtraLen), body),
+
+    % Hand the request off to the server.
+    gen_server:cast(StorageServer, {?STAT, Extra, Key, Body, CAS, Socket, Opaque});
 process_message(Socket, StorageServer, {ok, <<?REQ_MAGIC:8, OpCode:8, KeyLen:16,
                                             ExtraLen:8, 0:8, 0:16,
                                             BodyLen:32,

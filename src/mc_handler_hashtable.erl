@@ -47,9 +47,16 @@ handle_info(X, State) ->
     error_logger:info_msg("Someone asked for info ~p~n", [X]),
     {noreply, State}.
 
-handle_cast(X, Locks) ->
-    error_logger:info_msg("Someone casted ~p~n", [X]),
-    {noreply, Locks}.
+mk_stat(K, V) ->
+    #mc_response{key=K, body=V}.
+
+handle_cast({?STAT, _Extra, _Key, _Body, _CAS, Socket, Opaque}, State) ->
+    error_logger:info_msg("Handling stats.", []),
+    % Perhaps should do something special depending on key here.
+    mc_connection:respond(Socket, ?STAT, Opaque, mk_stat("stat1", "val1")),
+    mc_connection:respond(Socket, ?STAT, Opaque, mk_stat("stat2", "val2")),
+    mc_connection:respond(Socket, ?STAT, Opaque, mk_stat("", "")),
+    {noreply, State}.
 
 % Utility stuff
 
